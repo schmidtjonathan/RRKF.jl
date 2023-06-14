@@ -1,7 +1,8 @@
 function tsvd(A, r)
     U, σs, V = try
         svd(A)
-    catch e e
+    catch e
+        e
         if isa(e, LAPACKException)
             svd(A; alg = LinearAlgebra.QRIteration())
         else
@@ -9,9 +10,9 @@ function tsvd(A, r)
         end
     end
 
-    U_partial =  U[:, 1:r]
+    U_partial = U[:, 1:r]
     σs_partial = σs[1:r]
-    V_partial =  V[:, 1:r]
+    V_partial = V[:, 1:r]
     return U_partial, σs_partial, V_partial
 end
 
@@ -42,7 +43,13 @@ function rrkf_backwards_prediction(ξ_next, sqrt_Λ_next, G, b, sqrt_P, r)
 end
 
 
-function rrkf_predict_and_backwards_kernel(μ, Σ_sqrt::LeftMatrixSqrt, Φ, Q_sqrt::LeftMatrixSqrt, r)
+function rrkf_predict_and_backwards_kernel(
+    μ,
+    Σ_sqrt::LeftMatrixSqrt,
+    Φ,
+    Q_sqrt::LeftMatrixSqrt,
+    r,
+)
     next_mean = Φ * μ
     U_Π, s_Π, V_Π = tsvd([Φ * Σ_sqrt.factor Q_sqrt.factor], r)
     D_Π = Diagonal(s_Π)
@@ -60,9 +67,10 @@ function rrkf_predict_and_backwards_kernel(μ, Σ_sqrt::LeftMatrixSqrt, Φ, Q_sq
 
     b = μ - Σ_sqrt_factor * (Γ * (Π_inv_sqrt_factor' * next_mean))
 
-    I_minus_GΦ_Σsqrt = Σ_sqrt_factor - Σ_sqrt_factor * (Γ * (Π_inv_sqrt_factor' * (Φ * Σ_sqrt_factor)))
+    I_minus_GΦ_Σsqrt =
+        Σ_sqrt_factor - Σ_sqrt_factor * (Γ * (Π_inv_sqrt_factor' * (Φ * Σ_sqrt_factor)))
     GQ_sqrt = Σ_sqrt_factor * (Γ * (Π_inv_sqrt_factor' * Q_sqrt.factor))
-    U_P, s_P, V_P = tsvd([I_minus_GΦ_Σsqrt  GQ_sqrt], r)
+    U_P, s_P, V_P = tsvd([I_minus_GΦ_Σsqrt GQ_sqrt], r)
     P_sqrt = U_P * Diagonal(s_P)
 
     G = (Σ_sqrt_factor, Γ, Π_inv_sqrt_factor)
@@ -79,12 +87,26 @@ function rrkf_correct(
     R_sqrt::LeftMatrixSqrt,
     y,
     r;
-    compute_likelihood = false
+    compute_likelihood = false,
 )
     if r <= size(C, 1)
-        _rrkf_correct_rsmallerm(μ⁻, Π_sqrt, C, R_sqrt, y; compute_likelihood=compute_likelihood)
+        _rrkf_correct_rsmallerm(
+            μ⁻,
+            Π_sqrt,
+            C,
+            R_sqrt,
+            y;
+            compute_likelihood = compute_likelihood,
+        )
     else
-        _rrkf_correct_rlargerm(μ⁻, Π_sqrt, C, R_sqrt, y; compute_likelihood=compute_likelihood)
+        _rrkf_correct_rlargerm(
+            μ⁻,
+            Π_sqrt,
+            C,
+            R_sqrt,
+            y;
+            compute_likelihood = compute_likelihood,
+        )
     end
 end
 
@@ -96,7 +118,7 @@ function _rrkf_correct_rsmallerm(
     C,
     R_sqrt::LeftMatrixSqrt,
     y;
-    compute_likelihood
+    compute_likelihood,
 )
 
     y_hat = C * μ⁻
@@ -110,11 +132,12 @@ function _rrkf_correct_rsmallerm(
 
     μ = μ⁻ + K_ * (F_S.Vt * ϵ)
 
-    Σ_sqrt = Π_sqrt.factor * F_S.U / Diagonal(sqrt.(1 .+ diag(D_S).^2))
+    Σ_sqrt = Π_sqrt.factor * F_S.U / Diagonal(sqrt.(1 .+ diag(D_S) .^ 2))
 
     loglik = if compute_likelihood
         trm = ϵ' * F_S.V * D_S
-        -logdet(R_sqrt.factor) - 0.5 * sum(log.(diag(D_S).^2 .+ 1.0)) - 0.5 * ϵ' * ϵ + 0.5 * (trm * inv(D_S^2 + I) * trm')
+        -logdet(R_sqrt.factor) - 0.5 * sum(log.(diag(D_S) .^ 2 .+ 1.0)) - 0.5 * ϵ' * ϵ +
+        0.5 * (trm * inv(D_S^2 + I) * trm')
     else
         0.0
     end
@@ -178,7 +201,9 @@ function rrkf_smooth(filter_sol::FilteringSolution{LeftMatrixSqrt})
     for k in reverse(2:length(filter_sol))
         G, b, sqrt_C = filter_sol.backwards_transitions[k]
         if ismissing(G) || ismissing(b) || ismissing(sqrt_C)
-            error("Found no backward transition at step $k / $(length(filter_sol)), time t = $(filter_sol.t[k])")
+            error(
+                "Found no backward transition at step $k / $(length(filter_sol)), time t = $(filter_sol.t[k])",
+            )
         end
 
         ξ_next, sqrt_Λ_next = smoothed_sol[1]

@@ -7,18 +7,10 @@ struct FilteringSolution{CT} <: AbstractKalmanSolution{CT}
 
     backwards_transitions::Vector{Tuple}
 
-    FilteringSolution{CT}() where {CT} = new{CT}(
-        Float64[],
-        Vector{Float64}[],
-        CT[],
-        Tuple[]
-    )
-    FilteringSolution(cov::CT) where {CT} = new{typeof(cov)}(
-        Float64[],
-        Vector{Float64}[],
-        typeof(cov)[],
-        Tuple[],
-    )
+    FilteringSolution{CT}() where {CT} =
+        new{CT}(Float64[], Vector{Float64}[], CT[], Tuple[])
+    FilteringSolution(cov::CT) where {CT} =
+        new{typeof(cov)}(Float64[], Vector{Float64}[], typeof(cov)[], Tuple[])
 end
 
 struct SmoothingSolution{CT} <: AbstractKalmanSolution{CT}
@@ -26,11 +18,7 @@ struct SmoothingSolution{CT} <: AbstractKalmanSolution{CT}
     μ::Vector{Vector{Float64}}
     Σ::Vector{CT}
 
-    SmoothingSolution{CT}() where {CT} = new{CT}(
-        Float64[],
-        Vector{Float64}[],
-        CT[],
-    )
+    SmoothingSolution{CT}() where {CT} = new{CT}(Float64[], Vector{Float64}[], CT[])
 end
 
 
@@ -39,12 +27,7 @@ function SmoothingSolution(filter_sol::FilteringSolution)
 end
 
 
-function append_step!(
-    sol::SmoothingSolution,
-    t,
-    μ,
-    Σ,
-)
+function append_step!(sol::SmoothingSolution, t, μ, Σ)
     Base.pushfirst!(sol.t, t)
     Base.pushfirst!(sol.μ, copy(μ))
     Base.pushfirst!(sol.Σ, copy(Σ))
@@ -71,7 +54,7 @@ function append_step!(
             ismissing(G) ? missing : deepcopy(G),
             ismissing(b) ? missing : deepcopy(b),
             ismissing(C) ? missing : deepcopy(C),
-        )
+        ),
     )
 
     return sol
@@ -92,6 +75,5 @@ end
 
 means(sol::AbstractKalmanSolution) = vecvec2mat(sol.μ)
 
-stds(sol::AbstractKalmanSolution, mult_with::Float64 = 1.0) = vecvec2mat(
-    (map(M->mult_with * sqrt.(LinearAlgebra.diag(M)), sol.Σ))
-)
+stds(sol::AbstractKalmanSolution, mult_with::Float64 = 1.0) =
+    vecvec2mat((map(M -> mult_with * sqrt.(LinearAlgebra.diag(M)), sol.Σ)))

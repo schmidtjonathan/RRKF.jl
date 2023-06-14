@@ -23,7 +23,7 @@ end
 
 function LinearAlgebra.diag(rms::LeftMatrixSqrt)
     n, r = size(rms.factor)
-    return [sum(rms.factor[i, :] .^ 2) for i in 1:n]
+    return [sum(rms.factor[i, :] .^ 2) for i = 1:n]
 end
 
 function Base.size(rms::LeftMatrixSqrt)

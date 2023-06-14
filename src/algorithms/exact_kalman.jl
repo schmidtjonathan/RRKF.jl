@@ -58,7 +58,9 @@ function kf_smooth(filter_sol::FilteringSolution{CT}) where {CT<:AbstractMatrix}
     for k in reverse(2:length(filter_sol))
         G, b, C = filter_sol.backwards_transitions[k]
         if ismissing(G) || ismissing(b) || ismissing(C)
-            error("Found no backward transition at step $k / $(length(filter_sol)), time t = $(filter_sol.t[k])")
+            error(
+                "Found no backward transition at step $k / $(length(filter_sol)), time t = $(filter_sol.t[k])",
+            )
         end
 
         ξ_next, Λ_next = smoothed_sol[1]
@@ -111,7 +113,7 @@ function sqrt_kf_correct(
     H::AbstractMatrix,
     RL::LeftMatrixSqrt,
     y::AbstractVector;
-    compute_likelihood=false
+    compute_likelihood = false,
 )
     d, D = size(H)
 
@@ -157,7 +159,9 @@ function qr_smooth(filter_sol::FilteringSolution{LeftMatrixSqrt})
     for k in reverse(2:length(filter_sol))
         G, b, sqrt_C = filter_sol.backwards_transitions[k]
         if ismissing(G) || ismissing(b) || ismissing(sqrt_C)
-            error("Found no backward transition at step $k / $(length(filter_sol)), time t = $(filter_sol.t[k])")
+            error(
+                "Found no backward transition at step $k / $(length(filter_sol)), time t = $(filter_sol.t[k])",
+            )
         end
 
         ξ_next, sqrt_Λ_next = smoothed_sol[1]
@@ -168,5 +172,3 @@ function qr_smooth(filter_sol::FilteringSolution{LeftMatrixSqrt})
     end
     return smoothed_sol
 end
-
-

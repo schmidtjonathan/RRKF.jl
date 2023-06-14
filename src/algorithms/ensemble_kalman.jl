@@ -1,4 +1,4 @@
-ensemble_mean(ens::AbstractMatrix) = vec(mean(ens, dims=2))
+ensemble_mean(ens::AbstractMatrix) = vec(mean(ens, dims = 2))
 
 centered_ensemble(ens::AbstractMatrix) = ens .- ensemble_mean(ens)
 
@@ -29,7 +29,7 @@ function _calc_PH_HPH(ensemble, H)
     A = centered_ensemble(ensemble)
     PH = zeros(D, d)
     HPH = zeros(d, d)
-    @inbounds @simd for i in 1:N
+    @inbounds @simd for i = 1:N
         x_i = A[:, i]
         meas = H * x_i
         PH .+= x_i * meas'
@@ -39,11 +39,7 @@ function _calc_PH_HPH(ensemble, H)
 end
 
 
-function enkf_predict(
-    ensemble,
-    Φ,
-    Q_sqrt::LeftMatrixSqrt,
-)
+function enkf_predict(ensemble, Φ, Q_sqrt::LeftMatrixSqrt)
     D, N = size(ensemble)
     sampled_proc_noise = Q_sqrt.factor * rand(MvNormal(I(D)), N)
     forecast_ensemble = Φ * ensemble + sampled_proc_noise
@@ -57,7 +53,7 @@ function enkf_correct(
     H,
     measurement_noise_dist::MvNormal,
     y;
-    compute_likelihood=false
+    compute_likelihood = false,
 )
     N = size(forecast_ensemble, 2)
     HX = H * forecast_ensemble
@@ -85,7 +81,7 @@ function etkf_correct(
     H,
     measurement_noise_dist::MvNormal,
     y;
-    compute_likelihood = false
+    compute_likelihood = false,
 )
     !compute_likelihood || error("ETKF likelihood is not implemented.")
 

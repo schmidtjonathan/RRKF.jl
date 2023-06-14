@@ -11,7 +11,7 @@ end
 
 struct EnsembleKalmanFilter <: AbstractFilteringAlgorithm
     ensemble_size::Int64
-    correct_function
+    correct_function::Any
 end
 
 
@@ -29,7 +29,16 @@ function _measmod_without_nans(ssm::StateSpaceModel, y::AbstractVector)
 end
 
 
-function estimate_states(::KalmanFilter, ssm, times, observations; smooth=false, compute_likelihood, save_all_steps=true, show_progress=true)
+function estimate_states(
+    ::KalmanFilter,
+    ssm,
+    times,
+    observations;
+    smooth = false,
+    compute_likelihood,
+    save_all_steps = true,
+    show_progress = true,
+)
 
     if smooth && !save_all_steps
         error("Cannot smooth without saving all steps")
@@ -47,7 +56,14 @@ function estimate_states(::KalmanFilter, ssm, times, observations; smooth=false,
     # 2. condition on first measurement
     μ₀, Σ₀, ll₀ = if !all(isnan.(observations[1]))
         Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, observations[1])
-        kf_correct(m_stat, symmetrize_matrix(P_stat), Hₜ, Rₜ, yₜ; compute_likelihood=compute_likelihood)
+        kf_correct(
+            m_stat,
+            symmetrize_matrix(P_stat),
+            Hₜ,
+            Rₜ,
+            yₜ;
+            compute_likelihood = compute_likelihood,
+        )
     else
         copy(m_stat), symmetrize_matrix(P_stat), 0.0
     end
@@ -62,7 +78,7 @@ function estimate_states(::KalmanFilter, ssm, times, observations; smooth=false,
 
     loglik = ll₀
 
-    progbar = Progress(length(times) - 1; showspeed=true, enabled=show_progress)
+    progbar = Progress(length(times) - 1; showspeed = true, enabled = show_progress)
     for (t, y) in zip(times[2:end], observations[2:end])
         current_dt = t - previous_t
         previous_t = t
@@ -80,7 +96,7 @@ function estimate_states(::KalmanFilter, ssm, times, observations; smooth=false,
         # Correct
         current_m, current_P, ll = if !all(isnan.(y))
             Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, y)
-            kf_correct(μ⁻, Π, Hₜ, Rₜ, yₜ; compute_likelihood=compute_likelihood)
+            kf_correct(μ⁻, Π, Hₜ, Rₜ, yₜ; compute_likelihood = compute_likelihood)
         else
             μ⁻, Π, 0.0
         end
@@ -103,16 +119,26 @@ function estimate_states(::KalmanFilter, ssm, times, observations; smooth=false,
     end
 
     estimate = Dict(
-        :filter => save_all_steps ? filter_sol : (t=previous_t, μ=current_m, Σ=current_P),
+        :filter =>
+            save_all_steps ? filter_sol : (t = previous_t, μ = current_m, Σ = current_P),
         :smoother => smoother_sol,
-        :loglikelihood => mean_loglik
+        :loglikelihood => mean_loglik,
     )
     return estimate
 end
 
 
 
-function estimate_states(::SqrtKalmanFilter, ssm, times, observations; smooth=false, compute_likelihood, save_all_steps=true, show_progress=true)
+function estimate_states(
+    ::SqrtKalmanFilter,
+    ssm,
+    times,
+    observations;
+    smooth = false,
+    compute_likelihood,
+    save_all_steps = true,
+    show_progress = true,
+)
 
     if smooth && !save_all_steps
         error("Cannot smooth without saving all steps")
@@ -132,7 +158,14 @@ function estimate_states(::SqrtKalmanFilter, ssm, times, observations; smooth=fa
         Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, observations[1])
         P_stat_sqrt = LeftMatrixSqrt(cholesky(Symmetric(symmetrize_matrix(P_stat))))
         R_sqrt = LeftMatrixSqrt(cholesky(Rₜ))
-        μ₀, Σ₀_sqrt, ll₀ = sqrt_kf_correct(m_stat, P_stat_sqrt, Hₜ, R_sqrt, yₜ; compute_likelihood=compute_likelihood)
+        μ₀, Σ₀_sqrt, ll₀ = sqrt_kf_correct(
+            m_stat,
+            P_stat_sqrt,
+            Hₜ,
+            R_sqrt,
+            yₜ;
+            compute_likelihood = compute_likelihood,
+        )
     else
         P_stat_sqrt = LeftMatrixSqrt(cholesky(Symmetric(symmetrize_matrix(P_stat))))
         copy(m_stat), P_stat_sqrt, 0.0
@@ -150,7 +183,7 @@ function estimate_states(::SqrtKalmanFilter, ssm, times, observations; smooth=fa
 
     loglik = ll₀
 
-    progbar = Progress(length(times) - 1; showspeed=true, enabled=show_progress)
+    progbar = Progress(length(times) - 1; showspeed = true, enabled = show_progress)
     for (t, y) in zip(times[2:end], observations[2:end])
         current_dt = t - previous_t
         previous_t = t
@@ -169,7 +202,14 @@ function estimate_states(::SqrtKalmanFilter, ssm, times, observations; smooth=fa
         current_m, current_P_sqrt, ll = if !all(isnan.(y))
             Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, y)
             R_sqrt = LeftMatrixSqrt(cholesky(Rₜ))
-            sqrt_kf_correct(μ⁻, Π_sqrt, Hₜ, R_sqrt, yₜ; compute_likelihood=compute_likelihood)
+            sqrt_kf_correct(
+                μ⁻,
+                Π_sqrt,
+                Hₜ,
+                R_sqrt,
+                yₜ;
+                compute_likelihood = compute_likelihood,
+            )
         else
             μ⁻, Π_sqrt, 0.0
         end
@@ -192,16 +232,27 @@ function estimate_states(::SqrtKalmanFilter, ssm, times, observations; smooth=fa
     end
 
     estimate = Dict(
-        :filter => save_all_steps ? filter_sol : (t=previous_t, μ=current_m, Σ=current_P_sqrt),
+        :filter =>
+            save_all_steps ? filter_sol :
+            (t = previous_t, μ = current_m, Σ = current_P_sqrt),
         :smoother => smoother_sol,
-        :loglikelihood => mean_loglik
+        :loglikelihood => mean_loglik,
     )
     return estimate
 end
 
 
 
-function estimate_states(alg::RankReducedKalmanFilter, ssm, times, observations; smooth=false, compute_likelihood, save_all_steps=true, show_progress=true)
+function estimate_states(
+    alg::RankReducedKalmanFilter,
+    ssm,
+    times,
+    observations;
+    smooth = false,
+    compute_likelihood,
+    save_all_steps = true,
+    show_progress = true,
+)
 
     if smooth && !save_all_steps
         error("Cannot smooth without saving all steps")
@@ -224,7 +275,15 @@ function estimate_states(alg::RankReducedKalmanFilter, ssm, times, observations;
 
         P_stat_sqrt = LeftMatrixSqrt(U_Pstat * Diagonal(sqrt.(s_Pstat)))
         R_sqrt = LeftMatrixSqrt(cholesky(Rₜ))
-        μ₀, Σ₀_sqrt, ll₀ = rrkf_correct(m_stat, P_stat_sqrt, Hₜ, R_sqrt, yₜ, alg.nvals; compute_likelihood=compute_likelihood)
+        μ₀, Σ₀_sqrt, ll₀ = rrkf_correct(
+            m_stat,
+            P_stat_sqrt,
+            Hₜ,
+            R_sqrt,
+            yₜ,
+            alg.nvals;
+            compute_likelihood = compute_likelihood,
+        )
     else
         U_Pstat, s_Pstat, V_Pstat = tsvd(symmetrize_matrix(P_stat), alg.nvals)
 
@@ -245,24 +304,34 @@ function estimate_states(alg::RankReducedKalmanFilter, ssm, times, observations;
     # Initialize process noise cov
     U_Q = rand_orth_mat(size(current_P_sqrt.factor)...)
 
-    progbar = Progress(length(times) - 1; showspeed=true, enabled=show_progress)
+    progbar = Progress(length(times) - 1; showspeed = true, enabled = show_progress)
     for (t, y) in zip(times[2:end], observations[2:end])
         current_dt = t - previous_t
         previous_t = t
 
-        A, Q_sqrt, U_Q = discretize_lowrank(ssm.dynamics, current_dt, alg.nvals; orth_basis=U_Q)
+        A, Q_sqrt, U_Q =
+            discretize_lowrank(ssm.dynamics, current_dt, alg.nvals; orth_basis = U_Q)
         # Predict
         (μ⁻, Π_sqrt), (G, b, backwards_S_sqrt) = if smooth
             rrkf_predict_and_backwards_kernel(current_m, current_P_sqrt, A, Q_sqrt, alg.nvals)
         else
-            rrkf_predict(current_m, current_P_sqrt, A, Q_sqrt, alg.nvals), (missing, missing, missing)
+            rrkf_predict(current_m, current_P_sqrt, A, Q_sqrt, alg.nvals),
+            (missing, missing, missing)
         end
 
         # Correct
         current_m, current_P_sqrt, ll = if !all(isnan.(y))
             Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, y)
             R_sqrt = LeftMatrixSqrt(cholesky(Rₜ))
-            rrkf_correct(μ⁻, Π_sqrt, Hₜ, R_sqrt, yₜ, alg.nvals; compute_likelihood=compute_likelihood)
+            rrkf_correct(
+                μ⁻,
+                Π_sqrt,
+                Hₜ,
+                R_sqrt,
+                yₜ,
+                alg.nvals;
+                compute_likelihood = compute_likelihood,
+            )
         else
             μ⁻, Π_sqrt, 0.0
         end
@@ -287,16 +356,27 @@ function estimate_states(alg::RankReducedKalmanFilter, ssm, times, observations;
     end
 
     estimate = Dict(
-        :filter => save_all_steps ? filter_sol : (t=previous_t, μ=current_m, Σ=current_P_sqrt),
+        :filter =>
+            save_all_steps ? filter_sol :
+            (t = previous_t, μ = current_m, Σ = current_P_sqrt),
         :smoother => smoother_sol,
-        :loglikelihood => mean_loglik
+        :loglikelihood => mean_loglik,
     )
     return estimate
 end
 
 
 
-function estimate_states(alg::EnsembleKalmanFilter, ssm, times, observations; smooth=false, compute_likelihood, save_all_steps=true, show_progress=true)
+function estimate_states(
+    alg::EnsembleKalmanFilter,
+    ssm,
+    times,
+    observations;
+    smooth = false,
+    compute_likelihood,
+    save_all_steps = true,
+    show_progress = true,
+)
 
     if smooth
         error("EnKF smoothing is not implemented.")
@@ -316,7 +396,13 @@ function estimate_states(alg::EnsembleKalmanFilter, ssm, times, observations; sm
         Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, observations[1])
         stat_ens = rand(MvNormal(m_stat, Symmetric(P_stat)), alg.ensemble_size)
         meas_noise_dist = MvNormal(Rₜ)
-        alg.correct_function(stat_ens, Hₜ, meas_noise_dist, yₜ; compute_likelihood=compute_likelihood)
+        alg.correct_function(
+            stat_ens,
+            Hₜ,
+            meas_noise_dist,
+            yₜ;
+            compute_likelihood = compute_likelihood,
+        )
     else
         stat_ens = rand(MvNormal(m_stat, Symmetric(P_stat)), alg.ensemble_size)
         stat_ens, 0.0
@@ -327,13 +413,18 @@ function estimate_states(alg::EnsembleKalmanFilter, ssm, times, observations; sm
 
     filter_sol = if save_all_steps
         current_m, current_P_sqrt = ensemble_mean_sqrt_cov(current_ensemble)
-        append_step!(FilteringSolution(current_P_sqrt), previous_t, current_m, current_P_sqrt)
+        append_step!(
+            FilteringSolution(current_P_sqrt),
+            previous_t,
+            current_m,
+            current_P_sqrt,
+        )
     else
         nothing
     end
 
 
-    progbar = Progress(length(times) - 1; showspeed=true, enabled=show_progress)
+    progbar = Progress(length(times) - 1; showspeed = true, enabled = show_progress)
     for (t, y) in zip(times[2:end], observations[2:end])
         current_dt = t - previous_t
         previous_t = t
@@ -348,7 +439,13 @@ function estimate_states(alg::EnsembleKalmanFilter, ssm, times, observations; sm
         current_ensemble, ll = if !all(isnan.(y))
             Hₜ, Rₜ, yₜ = _measmod_without_nans(ssm, y)
             obs_noise_dist = MvNormal(Rₜ)
-            alg.correct_function(ensemble_pred, Hₜ, obs_noise_dist, yₜ; compute_likelihood=compute_likelihood)
+            alg.correct_function(
+                ensemble_pred,
+                Hₜ,
+                obs_noise_dist,
+                yₜ;
+                compute_likelihood = compute_likelihood,
+            )
         else
             ensemble_pred, 0.0
         end
@@ -357,7 +454,15 @@ function estimate_states(alg::EnsembleKalmanFilter, ssm, times, observations; sm
 
         if save_all_steps
             current_m, current_P_sqrt = ensemble_mean_sqrt_cov(current_ensemble)
-            append_step!(filter_sol, t, current_m, current_P_sqrt, missing, missing, missing)
+            append_step!(
+                filter_sol,
+                t,
+                current_m,
+                current_P_sqrt,
+                missing,
+                missing,
+                missing,
+            )
         end
 
         ProgressMeter.next!(progbar)
@@ -369,9 +474,10 @@ function estimate_states(alg::EnsembleKalmanFilter, ssm, times, observations; sm
     smoother_sol = nothing
 
     estimate = Dict(
-        :filter => save_all_steps ? filter_sol : (t=previous_t, ensemble=current_ensemble),
+        :filter =>
+            save_all_steps ? filter_sol : (t = previous_t, ensemble = current_ensemble),
         :smoother => smoother_sol,
-        :loglikelihood => mean_loglik
+        :loglikelihood => mean_loglik,
     )
     return estimate
 end

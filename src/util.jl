@@ -3,9 +3,9 @@ function symmetrize_matrix(A)
 end
 
 function rand_orth_mat(n, m)
-	A = randn(n, m)
-	F = qr!(A)
-	return Matrix(F.Q)
+    A = randn(n, m)
+    F = qr!(A)
+    return Matrix(F.Q)
 end
 
 
@@ -19,7 +19,7 @@ export tuple2vec
 
 
 num_zeros(A) = sum(iszero.(A))
-function sparse_criterion(A; frac_zeros = 2/3)
+function sparse_criterion(A; frac_zeros = 2 / 3)
     numelA = size(A) |> prod
     return num_zeros(A) >= frac_zeros * numelA
 end

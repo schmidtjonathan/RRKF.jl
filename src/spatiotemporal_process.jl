@@ -8,12 +8,7 @@ struct LTIGaussMarkovProcess{amT,bmT,iamT,ibmT,wdT,icmT}
 end
 
 
-function build_spatiotemporal_matern_process(
-    ν,
-    ℓₜ,
-    σₜ,
-    spatial_kernelmatrix,
-)
+function build_spatiotemporal_matern_process(ν, ℓₜ, σₜ, spatial_kernelmatrix)
     drift_matrix_1d, dispersion_matrix_1d = matern_1d_LTISDE(ν, ℓₜ, σₜ)
     wd = size(spatial_kernelmatrix, 1)
     drift_matrix = kronecker(I(wd), drift_matrix_1d)
@@ -52,13 +47,14 @@ function matern_1d_LTISDE(smoothness, lengthscale, output_scale)
     λ = sqrt(2ν) / ℓ
 
     drift = diagm(1 => ones(D - 1))
-    for i in 0:1:D - 1
+    for i = 0:1:D-1
         aᵢ = binomial(D, i)
         drift[end, i+1] = -aᵢ * λ^(D - i)
     end
 
     dispersion = zeros(D)
-    diffusion_coeff = output_scale^2 * ((factorial(D - 1)^2) / (factorial(2 * D - 2))) * (2λ)^(2 * D - 1)
+    diffusion_coeff =
+        output_scale^2 * ((factorial(D - 1)^2) / (factorial(2 * D - 2))) * (2λ)^(2 * D - 1)
     dispersion[end] = diffusion_coeff
 
     return drift, dispersion
@@ -66,7 +62,8 @@ end
 
 
 function stationary_moments(proc::LTIGaussMarkovProcess)
-    Σ_stationary_1d = lyapc(proc.drift_matrix_1d, proc.dispersion_matrix_1d * proc.dispersion_matrix_1d')
+    Σ_stationary_1d =
+        lyapc(proc.drift_matrix_1d, proc.dispersion_matrix_1d * proc.dispersion_matrix_1d')
     # https://aaltodoc.aalto.fi/bitstream/handle/123456789/19842/isbn9789526067117.pdf?sequence=1&isAllowed=y
     #                   /--------------------------\ <- around Eq. (4.17) in Arno Solin's thesis --^
     full_diffusion_matrix = Symmetric(symmetrize_matrix(Matrix(proc.wiener_diffusion)))
@@ -79,7 +76,10 @@ end
 
 function discretize(proc::LTIGaussMarkovProcess, dt)
     d = size(proc.drift_matrix_1d, 1)
-    M = [proc.drift_matrix_1d proc.dispersion_matrix_1d*proc.dispersion_matrix_1d'; zero(proc.drift_matrix_1d) -proc.drift_matrix_1d']
+    M = [
+        proc.drift_matrix_1d proc.dispersion_matrix_1d*proc.dispersion_matrix_1d'
+        zero(proc.drift_matrix_1d) -proc.drift_matrix_1d'
+    ]
     Mexp = exp(dt * M)
     A_breve = Mexp[1:d, 1:d]
     Q_breve = Mexp[1:d, d+1:end] * A_breve'
@@ -102,7 +102,10 @@ function discretize_sqrt(proc::LTIGaussMarkovProcess, dt)
     end
 
     d = size(proc.drift_matrix_1d, 1)
-    M = [proc.drift_matrix_1d proc.dispersion_matrix_1d*proc.dispersion_matrix_1d'; zero(proc.drift_matrix_1d) -proc.drift_matrix_1d']
+    M = [
+        proc.drift_matrix_1d proc.dispersion_matrix_1d*proc.dispersion_matrix_1d'
+        zero(proc.drift_matrix_1d) -proc.drift_matrix_1d'
+    ]
     Mexp = exp(dt * M)
     A_breve = Mexp[1:d, 1:d]
     Q_breve = Mexp[1:d, d+1:end] * A_breve'
@@ -116,7 +119,13 @@ function discretize_sqrt(proc::LTIGaussMarkovProcess, dt)
 end
 
 
-function discretize_lowrank(proc::LTIGaussMarkovProcess, dt, r; orth_basis=nothing, num_dlra_steps=1)
+function discretize_lowrank(
+    proc::LTIGaussMarkovProcess,
+    dt,
+    r;
+    orth_basis = nothing,
+    num_dlra_steps = 1,
+)
 
     U0 = if isnothing(orth_basis)
         rand_orth_mat(state_dimension(proc), r)
@@ -138,13 +147,12 @@ end
 function projectionmatrix(proc::LTIGaussMarkovProcess, derivative)
     dimension = wiener_process_dimension(proc)
     D = num_derivatives(proc) + 1
-    return kronecker(I(dimension), [i == (derivative + 1) ? 1.0 : 0.0 for i in 1:D]')
+    return kronecker(I(dimension), [i == (derivative + 1) ? 1.0 : 0.0 for i = 1:D]')
 end
 
 
 function projectionmatrix(dimension::Int64, smoothness::Float64, derivative::Int64)
     @assert smoothness % 1.0 == 0.5
     D = round(Int, smoothness + 0.5)
-    return kronecker(I(dimension), [i == (derivative + 1) ? 1.0 : 0.0 for i in 1:D]')
+    return kronecker(I(dimension), [i == (derivative + 1) ? 1.0 : 0.0 for i = 1:D]')
 end
-
