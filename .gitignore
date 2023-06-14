@@ -28,7 +28,3 @@ Manifest.toml
 **.DS_Store
 
 **.gz
-
-*.pdf
-*.gif
-*.png
